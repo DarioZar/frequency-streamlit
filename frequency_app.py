@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 from bokeh.plotting import figure
 import peakutils
+#from scipy.signal import find_peaks
 from zipfile import ZipFile
 
 #TODO: dark theme for bokeh
@@ -12,14 +13,14 @@ from zipfile import ZipFile
 def fourier_transform(df, dt):
     # Calc PSD of acceleration signal for every axis
     df_fft = df.loc[:, "A_x":"A_mean"].apply(np.fft.rfft, axis=0).apply(np.abs, axis=0).apply(np.square, axis=0)
-    # Normalize to 1
-    df_fft.loc[:,"A_x":"A_mean"] /= df_fft.loc[:,"A_x":"A_mean"].apply(np.max, axis=0)
     # Rename columns
     df_fft.columns = "FFT_" + df_fft.columns
     # Calc frequencies
     df_fft.insert(0, "freq", np.fft.rfftfreq(df["t"].size, dt))
     # Drop first row (peak at zero)
     df_fft = df_fft.iloc[1: , :]
+    # Normalize to 1
+    df_fft.loc[:,"FFT_A_x":"FFT_A_mean"] /= df_fft.loc[:,"FFT_A_x":"FFT_A_mean"].apply(np.max, axis=0)
     return df_fft
 
 st.title("Signal analyzer")
@@ -71,12 +72,14 @@ if datafile is not None:
         p2 = figure(width=450, height=350, x_axis_label='f (Hz)', y_axis_label=option+" PSD")
         p2.line(df_fft["freq"],df_fft["FFT_"+option])
         st.bokeh_chart(p2, use_container_width=True)
-            #peak = df_fft["freq"][np.argmax(df_fft["FFT_"+option][1:])]
+            #peak = df_fft["freq"].iat[np.argmax(df_fft["FFT_"+option])]
             #st.write(f"La frequenza di picco corrisponde a {peak:.3f} Hz")
         # Calc peaks using peakutils
-        indexes = peakutils.indexes(df_fft["FFT_"+option][1:], thres=0.5)
+        print(df_fft)
+        indexes = peakutils.indexes(df_fft["FFT_"+option])
+        #indexes, _ = find_peaks(df_fft["FFT_"+option], height=0.3)
         for i in indexes:
-            st.write(f"Peak: {df_fft['freq'][i]:.3f} Hz")
+            st.write(f"Peak: {df_fft['freq'].iat[i]:.3f} Hz")
 
     except TypeError:
         st.write("Invalid file. File must be in Phyphox format.")
