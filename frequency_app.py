@@ -1,9 +1,13 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import altair as alt
+from bokeh.plotting import figure
 import peakutils
 from zipfile import ZipFile
+
+#TODO: dark theme for bokeh
+#def bokeh_figure_dark():
+#    pass
 
 def fourier_transform(df, dt):
     # Calc PSD of acceleration signal for every axis
@@ -14,6 +18,8 @@ def fourier_transform(df, dt):
     df_fft.columns = "FFT_" + df_fft.columns
     # Calc frequencies
     df_fft.insert(0, "freq", np.fft.rfftfreq(df["t"].size, dt))
+    # Drop first row (peak at zero)
+    df_fft = df_fft.iloc[1: , :]
     return df_fft
 
 st.title("Signal analyzer")
@@ -53,11 +59,18 @@ if datafile is not None:
         df = df.loc[df["t"].between(range[0], range[1])].reset_index(drop=True)
         df_fft = fourier_transform(df, dt)
 
-        # Plot data using integrated functions (x must be index of DataFrame)
+        # Plot data
         st.subheader("Signal")
-        st.line_chart(df[["t",option]].rename(columns={'t':'index'}).set_index('index'))
+        ## using integrated functions x must be index of DataFrame
+        #st.line_chart(df[["t",option]].rename(columns={'t':'index'}).set_index('index'))
+        p1 = figure(width=450, height=350, x_axis_label='t (s)', y_axis_label=option+" (m/s^2)")
+        p1.line(df["t"],df[option])
+        st.bokeh_chart(p1, use_container_width=True)
         st.subheader("Signal PSD")
-        st.line_chart(df_fft[["freq","FFT_"+option]].rename(columns={'freq':'index'}).set_index('index')[1:])
+        #st.line_chart(df_fft[["freq","FFT_"+option]].rename(columns={'freq':'index'}).set_index('index')[1:])
+        p2 = figure(width=450, height=350, x_axis_label='f (Hz)', y_axis_label=option+" PSD")
+        p2.line(df_fft["freq"],df_fft["FFT_"+option])
+        st.bokeh_chart(p2, use_container_width=True)
             #peak = df_fft["freq"][np.argmax(df_fft["FFT_"+option][1:])]
             #st.write(f"La frequenza di picco corrisponde a {peak:.3f} Hz")
         # Calc peaks using peakutils

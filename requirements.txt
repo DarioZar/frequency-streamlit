@@ -1,2 +1,3 @@
 xlrd
 peakutils
+bokeh==2.4.1
